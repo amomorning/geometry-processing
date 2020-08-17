@@ -108,13 +108,11 @@ function initLights() {
 function initMesh() {
     let material = new THREE.MeshPhongMaterial(materialSettings);
 
-    let cube1 = new THREE.BoxGeometry(3, 3, 3);
-    let cubeBSP = new ThreeBSP(new THREE.Mesh(cube1));
-    let cube2 = new THREE.BoxGeometry(2, 2, 2);
-    let cube2M = new THREE.Mesh(cube2);
-    cube2M.position.x += 2;
-    let sphereBSP = new ThreeBSP(cube2M); 
-    let geometry = cubeBSP.subtract ( sphereBSP ).toGeometry();
+    let cube = new THREE.BoxGeometry(1, 1, 1, 12, 12, 12);
+    let cubeBSP = new ThreeBSP(new THREE.Mesh(cube));
+    let cylinder  = new THREE.CylinderGeometry(1, 1, 0.2, 20, 3);
+    let cylinderBSP = new ThreeBSP(new THREE.Mesh(cylinder)); 
+    let geometry = cylinderBSP.subtract ( cubeBSP ).toGeometry();
     threeMesh = new THREE.Mesh(geometry, material);
 
     scene.add(threeMesh);
