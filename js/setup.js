@@ -106,9 +106,15 @@ function initLights() {
 }
 
 function initMesh() {
-    let geometry =new THREE.BoxGeometry(1, 1, 1);
     let material = new THREE.MeshPhongMaterial(materialSettings);
 
+    let cube1 = new THREE.BoxGeometry(3, 3, 3);
+    let cubeBSP = new ThreeBSP(new THREE.Mesh(cube1));
+    let cube2 = new THREE.BoxGeometry(2, 2, 2);
+    let cube2M = new THREE.Mesh(cube2);
+    cube2M.position.x += 2;
+    let sphereBSP = new ThreeBSP(cube2M); 
+    let geometry = cubeBSP.subtract ( sphereBSP ).toGeometry();
     threeMesh = new THREE.Mesh(geometry, material);
 
     scene.add(threeMesh);
