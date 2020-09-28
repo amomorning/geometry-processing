@@ -1,196 +1,88 @@
-if (!Detector.webgl) Detector.addGetWebGLMessage();
+//three.js - Isometric Projection using an Orthographic Camera
 
-let input = document.getElementById("fileInput");
-let renderer = undefined;
-let camera = undefined;
-let controls = undefined;
-let showWireframe = true;
-let scene = undefined;
-let wireframe = undefined;
-let pickRenderer = undefined;
-let pickScene = undefined;
-let threeMesh = undefined;
-let materialSettings = {
-        vertexColors: THREE.VertexColors,
-        polygonOffset: true,
-        polygonOffsetFactor: 1,
-        polygonOffsetUnits: 1,
-        side: THREE.DoubleSide,
-        flatShading: true,
-        specular: new THREE.Color(0.0, 0.0, 0.0),
-};
-
-let guiFields = {
-    "hello" : 5,
-    "test" : 10,
-    "Show Wireframe": showWireframe
-}
-
+var mesh, renderer, scene, camera;
 
 init();
-animate();
+render();
 
 function init() {
-    let container = document.createElement("div");
-    document.body.appendChild(container);
 
-    initRenderer(container);
-    initGUI();
-    initCamera();
-    initScene();
-    initLights();
-    initMesh();
-    initControls();
-    addEventListeners();
-}
+	// info
+	info = document.createElement( 'div' );
+	info.style.position = 'absolute';
+	info.style.top = '30px';
+	info.style.width = '100%';
+	info.style.textAlign = 'center';
+	info.style.color = '#fff';
+	info.style.fontWeight = 'bold';
+	info.style.backgroundColor = 'transparent';
+	info.style.zIndex = '1';
+	info.style.fontFamily = 'Monospace';
+	info.innerHTML = 'three.js - Isometric Projection<br/>drag mouse to rotate camera';
+	document.body.appendChild( info );
 
-function initRenderer(container) {
-    renderer = new THREE.WebGLRenderer({
-        antialias: true
-    });
-    renderer.setPixelRatio(window.devicePixelRatio);
-    renderer.setClearColor(0xffffff, 1.0);
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    container.appendChild(renderer.domElement);
+	// renderer
+	renderer = new THREE.WebGLRenderer();
+	renderer.setSize( window.innerWidth, window.innerHeight );
+	document.body.appendChild( renderer.domElement );
 
-    pickRenderer = new THREE.WebGLRenderer({
-        antialias: false // turn antialiasing off for color based picking
-    });
-    pickRenderer.setPixelRatio(window.devicePixelRatio);
-    pickRenderer.setClearColor(0xffffff, 1.0);
-    pickRenderer.setSize(window.innerWidth, window.innerHeight);
-    container.appendChild(pickRenderer.domElement);
-}
+	// scene
+	scene = new THREE.Scene();
 
-function initGUI() {
-    let gui = new dat.GUI();
-    gui.add(guiFields, "hello");
-    gui.add(guiFields, "test");
+	// camera
+	var aspect = window.innerWidth / window.innerHeight;
+	var d = 2000;
+	camera = new THREE.OrthographicCamera( - d * aspect, d * aspect, d, - d, 1, 5000 );
 
-    gui.add(guiFields, "Show Wireframe").onChange(toggleWireframe).listen();
+	// /////////////////////////////////////////////////////////////////////////
 
-}
+    // method 1 - use lookAt
+    pos = 1000;
+		camera.position.set( pos, pos, pos );
+        camera.lookAt( scene.position );
+        camera.up.set(0, 0, 1);
 
-function initCamera() {
-    const fov = 45.0;
-    const aspect = window.innerWidth / window.innerHeight;
-    const near = 0.1;
-    const far = 1000;
-    const eyeZ = 3.5;
+	// /////////////////////////////////////////////////////////////////////////
 
-    camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
-    camera.position.z = eyeZ;
+	// ambient
+	scene.add( new THREE.AmbientLight( 0x444444 ) );
 
-    uvCamera = new THREE.PerspectiveCamera(fov, 0.5 * aspect, near, far);
-    uvCamera.position.z = eyeZ;
-}
+	// light
+	var light = new THREE.PointLight( 0xffffff, 0.8 );
+	light.position.set( 0, 50, 50 );
+	scene.add( light );
 
-function initScene() {
-    scene = new THREE.Scene();
-    scene.background = new THREE.Color(0xffffff);
+	// axes
+	scene.add( new THREE.AxisHelper( 40 ) );
 
-    pickScene = new THREE.Scene();
-    pickScene.background = new THREE.Color(0xffffff);
+	// grid
+	var geometry = new THREE.PlaneBufferGeometry( 5000, 5000, 10, 10 );
+	var material = new THREE.MeshBasicMaterial( { wireframe: true, opacity: 0.5, transparent: true } );
+	var grid = new THREE.Mesh( geometry, material );
+	grid.rotation.order = 'YXZ';
+	grid.rotation.y = - Math.PI / 2;
+	grid.rotation.x = - Math.PI / 2;
+	scene.add( grid );
 
-}
+	// geometry
+    var geometry = new THREE.BoxGeometry( 1000, 1000, 2 );
+    
 
-function initLights() {
-    let ambient = new THREE.AmbientLight(0xffffff, 0.35);
-    camera.add(ambient);
+	// material
+	var material = new THREE.MeshNormalMaterial();
 
-    let point = new THREE.PointLight(0xffffff);
-    point.position.set(2, 20, 15);
-    camera.add(point);
+	// mesh
+    mesh = new THREE.Mesh( geometry, material );
+    mesh.rotation.x = - Math.PI / 2;
+    mesh.position.x = 500;
+    mesh.position.y = 500;
+    mesh.position.z = 0;
+	scene.add( mesh );
 
-    scene.add(camera);
-}
-
-function initMesh() {
-    let material = new THREE.MeshPhongMaterial(materialSettings);
-
-    let cube = new THREE.BoxGeometry(1, 1, 1, 12, 12, 12);
-    let cubeBSP = new ThreeBSP(new THREE.Mesh(cube));
-    let cylinder  = new THREE.CylinderGeometry(1, 1, 0.2, 20, 3);
-    let cylinderBSP = new ThreeBSP(new THREE.Mesh(cylinder)); 
-    let geometry = cylinderBSP.subtract ( cubeBSP ).toGeometry();
-    threeMesh = new THREE.Mesh(geometry, material);
-
-    scene.add(threeMesh);
-    // create wireframe
-    wireframe = new THREE.LineSegments();
-    wireframe.geometry = new THREE.WireframeGeometry(geometry);
-    wireframe.material = new THREE.LineBasicMaterial({
-        color: 0x000000,
-        linewidth: 0.75
-    });
-
-    let element = document.getElementById("meta");
-    element.textContent = "now is showing";
-
-    toggleWireframe(showWireframe);
-
-}
-
-
-function initControls() {
-    controls = new THREE.TrackballControls(camera, renderer.domElement);
-    controls.rotateSpeed = 5.0;
-}
-
-function addEventListeners() {
-    window.addEventListener("click", onMouseClick, false);
-    window.addEventListener("resize", onWindowResize, false);
-}
-
-
-function onMouseClick(event) {
-    if (event.clientX >= 0 && event.clientX <= window.innerWidth &&
-        event.clientY >= 0 && event.clientY <= window.innerHeight) {
-        shiftClick = event.shiftKey;
-        pick(event.clientX, event.clientY);
-    }
-}
-
-function onWindowResize() {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    controls.handleResize();
-    render();
-}
-
-
-function pick(clickX, clickY) {
-    // draw
-    let pickTexture = new THREE.WebGLRenderTarget(window.innerWidth, window.innerHeight);
-    pickTexture.texture.generateMipmaps = false;
-    pickRenderer.render(pickScene, camera, pickTexture);
-
-    // read color
-    let pixelBuffer = new Uint8Array(4);
-    pickRenderer.readRenderTargetPixels(pickTexture, clickX, pickTexture.height - clickY, 1, 1, pixelBuffer);
-
-    // convert color to id
-    let pickId = pixelBuffer[0] + pixelBuffer[1] * 256 + pixelBuffer[2] * 256 * 256;
-    if (pickId !== 0 && pickId !== 0x00ffffff) {
-        solveScalarPoissonProblem(mesh.vertices[pickId - 1]);
-    }
-}
-
-function toggleWireframe(checked) {
-    showWireframe = checked;
-    if (showWireframe) threeMesh.add(wireframe);
-    else threeMesh.remove(wireframe);
-}
-
-
-function animate() {
-    requestAnimationFrame(animate);
-    controls.update();
-    render();
 }
 
 function render() {
-    renderer.render(scene, camera);
+
+	renderer.render( scene, camera );
+
 }
